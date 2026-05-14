@@ -698,6 +698,7 @@ const getAllCheckListDatabyDriverId = asyncHandler(async (req, res) => {
   }
 });
 
+
 // ========================== EXPORTS ==========================
 module.exports = {
   fillchecklist,
