@@ -1,5 +1,6 @@
 const Schema = require("../Models/CheckListModel.js");
 const FillSchema = require("../Models/FillCheckListModel.js");
+const User = require("../Models/UserModel");
 const asyncHandler = require("express-async-handler");
 const { getquestionsbyId, getanswerssbyId } = require("../Utills/Helpers.js");
 const mongoose = require("mongoose");
@@ -533,12 +534,16 @@ const getfillchecklist = asyncHandler(async (req, res) => {
 const getAllCheckListData = asyncHandler(async (req, res) => {
   try {
     const response = await FillSchema.find()
-      .populate("checklistId", "title answers")
+      .populate({
+        path: "checklistId",
+        select: "title answers branches",
+        populate: { path: "branches", select: "branchName" }
+      })
       .populate("driverId", "username")
       .populate("BranchId", "branchName")
       .populate("routeId", "routeNumber");
 
-    const formatted = response.map((entry) => {
+    const formatted = await Promise.all(response.map(async (entry) => {
       const checklist = entry.checklistId;
       const filledAnswers = entry?.answers;
 
@@ -567,18 +572,34 @@ const getAllCheckListData = asyncHandler(async (req, res) => {
         };
       });
 
+      let driverName = "Unknown Driver";
+      const rawDriverId = entry.populated('driverId') || entry.driverId;
+
+      if (entry.driverId && typeof entry.driverId === 'object' && entry.driverId._id) {
+        driverName = entry.driverId.username || `${entry.driverId.firstname || ""} ${entry.driverId.lastname || ""}`.trim() || "Unknown Driver";
+      } else if (rawDriverId) {
+        // Fallback for Admin/User who are not in Driver collection
+        const fallbackUser = await User.findById(rawDriverId);
+        if (fallbackUser) {
+          driverName = fallbackUser.username || `${fallbackUser.firstname || ""} ${fallbackUser.lastname || ""}`.trim() || "Admin";
+        }
+      }
+
+      const branchName = entry.BranchId?.branchName || 
+        (checklist?.branches?.length > 0 ? checklist.branches[0].branchName : "N/A");
+
       return {
         fillId: entry._id,
         checklistTitle: checklist?.title || "N/A",
-        driver: entry.driverId?.username || "Unknown",
-        branch: entry.BranchId?.branchName || "",
-        routeNumber: entry.routeNumber?.routeNumber || "",
+        driver: driverName,
+        branch: branchName,
+        routeNumber: entry.routeId?.routeNumber || "",
         signature: entry.signature || null,
         answers: structuredAnswers,
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt,
       };
-    });
+    }));
 
     res.status(200).json({
       success: true,
@@ -598,11 +619,15 @@ const getAllCheckListData = asyncHandler(async (req, res) => {
 const getAllCheckListDatabyDriverId = asyncHandler(async (req, res) => {
   try {
     const response = await FillSchema.find({ driverId: req.params.driverId })
-      .populate("checklistId", "title answers")
+      .populate({
+        path: "checklistId",
+        select: "title answers branches",
+        populate: { path: "branches", select: "branchName" }
+      })
       .populate("driverId", "username")
       .populate("BranchId", "branchName");
 
-    const formatted = response.map((entry) => {
+    const formatted = await Promise.all(response.map(async (entry) => {
       const checklist = entry.checklistId;
       const filledAnswers = entry?.answers;
 
@@ -631,17 +656,33 @@ const getAllCheckListDatabyDriverId = asyncHandler(async (req, res) => {
         };
       });
 
+      let driverName = "Unknown Driver";
+      const rawDriverId = entry.populated('driverId') || entry.driverId;
+
+      if (entry.driverId && typeof entry.driverId === 'object' && entry.driverId._id) {
+        driverName = entry.driverId.username || `${entry.driverId.firstname || ""} ${entry.driverId.lastname || ""}`.trim() || "Unknown Driver";
+      } else if (rawDriverId) {
+        // Fallback for Admin/User
+        const fallbackUser = await User.findById(rawDriverId);
+        if (fallbackUser) {
+          driverName = fallbackUser.username || `${fallbackUser.firstname || ""} ${fallbackUser.lastname || ""}`.trim() || "Admin";
+        }
+      }
+
+      const branchName = entry.BranchId?.branchName || 
+        (checklist?.branches?.length > 0 ? checklist.branches[0].branchName : "N/A");
+
       return {
         fillId: entry._id,
         checklistTitle: checklist?.title || "N/A",
-        driver: entry.driverId?.username || "Unknown",
-        branch: entry.BranchId?.branchName || "",
+        driver: driverName,
+        branch: branchName,
         signature: entry.signature || null,
         answers: structuredAnswers,
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt,
       };
-    });
+    }));
 
     res.status(200).json({
       success: true,
