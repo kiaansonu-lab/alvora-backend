@@ -115,7 +115,12 @@ const getProfile = asyncHandler(async (req, res) => {
   }
 
   try {
-    const user = await Schema.findById(id).select("-password").populate('role', 'roleName');
+    let user = await Schema.findById(id).select("-password").populate('role', 'roleName');
+
+    if (!user) {
+      console.log("User not found in User collection, checking Driver collection for ID:", id);
+      user = await DriverSchema.findById(id).select("-password").populate('role', 'roleName');
+    }
 
     if (!user) {
       return res.status(404).json({ message: "User not found", success: false });

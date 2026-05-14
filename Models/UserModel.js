@@ -30,6 +30,9 @@ const userSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Roles"
     },
+    profileimage: {
+      type: String
+    },
     passwordResetToken: String,
     passwordResetExpires: Date,
   },

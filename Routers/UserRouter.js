@@ -12,10 +12,12 @@ const {
   getProfile
 } = require("../Controllers/UserCtrl");
 
+const { uploadSingleImageToCloudinary } = require("../Middewares/singleImgUpload");
+
 const router = express.Router();
 
 router.post("/create-user", createuser);
-router.put("/edituser/:id", editUser);
+router.put("/edituser/:id", upload.single('profileimage'), uploadSingleImageToCloudinary, editUser);
 router.delete("/deleteuser/:id", deleteUser);
 router.get("/getalluser", getAllUser);
 router.get("/getalluserdata", getAllUserData);
