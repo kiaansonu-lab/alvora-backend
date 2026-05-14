@@ -97,7 +97,13 @@ app.get("/", (req, res) => {
 });
 
 // API Routes
+console.log("🛠️ ROUTES ARE BEING INITIALIZED...");
 app.use(routes);
+
+// Test endpoint to check if this specific version of code is running
+app.get("/api/test-code-version", (req, res) => {
+  res.json({ message: "Code version: LOGS_ADDED_V1", timestamp: new Date() });
+});
 
 // Error Handler
 app.use((err, req, res, next) => {

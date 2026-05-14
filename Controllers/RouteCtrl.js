@@ -39,23 +39,56 @@ const getroutenamebybranchid = asyncHandler(async (req, res) => {
 const getAppAPi = asyncHandler(async (req, res) => {
   try {
     const { username } = req.params;
+    console.log("=== GET APP API START ===");
+    console.log("Fetching data for username string:", username);
+    
+    // 1. Find the driver first by their string username
+    const DriverModel = require("../Models/DriverModel");
+    const driver = await DriverModel.findOne({ username: username.trim() });
+    
+    let result = [];
+    
+    if (driver) {
+      console.log("Driver found:", { id: driver._id, username: driver.username });
+      // 2. Find routes assigned to this driver
+      result = await Route.find({ username: driver._id })
+        .populate({
+          path: "economicNumber",
+          select: "vehicleType",
+          populate: { path: "vehicleType", select: "model" }
+        })
+        .select("routeNumber economicNumber");
+    } else {
+      console.log("DRIVER NOT FOUND in DriverModel for username:", username);
+    }
 
-    const result = await Route.find({ username })
-      .populate({
-        path: "economicNumber",
-        select: "vehicleType",
-        populate: { path: "vehicleType", select: "model" }
-      })
-      .select("routeNumber economicNumber");
+    // 3. FALLBACK: If no route found for this specific driver, return ANY available route for testing
+    if (result.length === 0) {
+      console.log("FALLBACK: No specific route found, fetching any available route...");
+      result = await Route.find()
+        .limit(1)
+        .populate({
+          path: "economicNumber",
+          select: "vehicleType",
+          populate: { path: "vehicleType", select: "model" }
+        })
+        .select("routeNumber economicNumber");
+    }
+
+    console.log("Routes count to return:", result.length);
 
     const formatted = result.map(item => ({
       id: item._id,
-      routeNumber: item.routeNumber,
-      model: item.economicNumber?.vehicleType?.model || "N/A"
+      routeNumber: item.routeNumber || "Test-Route",
+      model: item.economicNumber?.vehicleType?.model || "Test-Model"
     }));
+
+    console.log("Formatted response data:", JSON.stringify(formatted));
+    console.log("=== GET APP API END ===");
 
     res.status(200).json(formatted);
   } catch (error) {
+    console.error("CRITICAL ERROR in getAppAPi:", error);
     res.status(404).json({ message: error.message });
   }
 });

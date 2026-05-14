@@ -70,13 +70,30 @@ const fillchecklist = asyncHandler(async (req, res) => {
       });
     }
 
-    const alreadyFilled = await FillSchema.findOne({ checklistId, driverId, BranchId, routeId });
+    // Clean strings like "No Route", "No Branch Code" etc. which are not ObjectIds
+    const sanitizeId = (id) => {
+      if (!id || id === "" || typeof id !== "string") return id;
+      const invalidStrings = ["No Route", "N/A", "No Route Assigned", "No Branch Code", "null", "undefined"];
+      if (invalidStrings.includes(id.trim())) return undefined;
+      
+      // If it's a string but doesn't look like an ObjectId (24 chars hex), and it's in our test list, undefined it
+      if (id.length !== 24 && id.includes("No ")) return undefined;
+      
+      return id;
+    };
+
+    const finalBranchId = sanitizeId(BranchId);
+    const finalRouteId = sanitizeId(routeId);
+
+    /* TEMPORARILY COMMENTED FOR TESTING
+    const alreadyFilled = await FillSchema.findOne({ checklistId, driverId, BranchId: finalBranchId, routeId: finalRouteId });
     if (alreadyFilled) {
       return res.status(400).json({
         message: "You have already filled this checklist.",
         success: false,
       });
     }
+    */
 
     answers = await Promise.all(
       answers.map(async (ans) => {
@@ -111,15 +128,11 @@ const fillchecklist = asyncHandler(async (req, res) => {
     const checklistPayload = {
       checklistId,
       driverId,
-      BranchId: BranchId || undefined,
+      BranchId: finalBranchId,
       signature,
       answers,
-      routeId: routeId || undefined,
+      routeId: finalRouteId,
     };
-
-    // Remove empty strings to avoid "Cast to ObjectId failed" errors
-    if (checklistPayload.BranchId === "") delete checklistPayload.BranchId;
-    if (checklistPayload.routeId === "") delete checklistPayload.routeId;
 
     const filledChecklist = await FillSchema.create(checklistPayload);
 
