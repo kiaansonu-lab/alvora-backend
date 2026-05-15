@@ -115,24 +115,37 @@ const getProfile = asyncHandler(async (req, res) => {
   }
 
   try {
-    const user = await Schema.findById(id).select("-password").populate('role', 'roleName');
+    let user = await Schema.findById(id).select("-password").populate('role', 'roleName');
 
     if (!user) {
-      return res.status(404).json({ message: "User not found", success: false });
+      console.log("DEBUG: Not found in users, checking Drivers collection for ID:", id);
+      user = await DriverSchema.findById(id).select("-password").populate('role', 'roleName');
     }
 
-    const driver = await DriverSchema.findOne({ userId: id });
-    if (driver) user.driverDetails = driver;
+    if (!user) {
+      console.log("DEBUG: Still not found in any collection for ID:", id);
+      return res.status(404).json({ message: "User or Driver profile not found", success: false });
+    }
 
     let userObj = user.toObject();
+    
+    // Explicitly handle Role name for the frontend
     if (userObj.role) {
+      userObj.roleName = userObj.role.roleName || "N/A";
       userObj.roleId = userObj.role._id;
-      userObj.roleName = userObj.role.roleName;
-      delete userObj.role;
+    } else {
+      userObj.roleName = "Driver"; // Fallback for drivers if role is missing
     }
 
-    res.status(200).json({ data: userObj, message: "User profile fetched successfully", success: true });
+    console.log("DEBUG: Profile found, Role Name:", userObj.roleName);
+
+    res.status(200).json({ 
+      data: userObj, 
+      message: "Profile fetched successfully", 
+      success: true 
+    });
   } catch (error) {
+    console.error("FATAL Profile Error:", error);
     res.status(500).json({ message: error.message, success: false });
   }
 });

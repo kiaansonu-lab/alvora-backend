@@ -13,6 +13,9 @@ const userSchema = new Schema(
     lastname: {
       type: String,
     },
+    middleName: {
+      type: String,
+    },
     username: {
       type: String,
     },
@@ -22,6 +25,9 @@ const userSchema = new Schema(
     phone: {
       type: String,
     },
+    dateOfBirth: {
+      type: String,
+    },
     driverStatus: {
       type: Boolean,
       default: true
@@ -29,6 +35,18 @@ const userSchema = new Schema(
     role: {
       type: Schema.Types.ObjectId,
       ref: "Roles"
+    },
+    profileimage: {
+      type: String,
+    },
+    licenseNumber: {
+      type: String,
+    },
+    licenseIssueDate: {
+      type: String,
+    },
+    licenseExpDate: {
+      type: String,
     },
     passwordResetToken: String,
     passwordResetExpires: Date,

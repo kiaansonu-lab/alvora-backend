@@ -28,6 +28,9 @@ const userSchema = new Schema(
     Address: {
       type: String,
     },
+    dateOfBirth: {
+      type: String,
+    },
     licenseNumber: {
       type: String,
     },

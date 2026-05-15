@@ -49,30 +49,22 @@ const getAppAPi = asyncHandler(async (req, res) => {
     let result = [];
     
     if (driver) {
-      console.log("Driver found:", { id: driver._id, username: driver.username });
-      // 2. Find routes assigned to this driver
-      result = await Route.find({ username: driver._id })
-        .populate({
-          path: "economicNumber",
-          select: "vehicleType",
-          populate: { path: "vehicleType", select: "model" }
-        })
-        .select("routeNumber economicNumber");
+      console.log("Driver found:", { id: driver._id, username: driver.username, assignedRoute: driver.route });
+      
+      // Use the route ID stored in the driver's profile
+      const assignedRouteId = driver.route;
+
+      if (assignedRouteId) {
+        result = await Route.find({ _id: assignedRouteId })
+          .populate({
+            path: "economicNumber",
+            select: "vehicleType economicNumber",
+            populate: { path: "vehicleType", select: "model" }
+          })
+          .select("routeNumber economicNumber");
+      }
     } else {
       console.log("DRIVER NOT FOUND in DriverModel for username:", username);
-    }
-
-    // 3. FALLBACK: If no route found for this specific driver, return ANY available route for testing
-    if (result.length === 0) {
-      console.log("FALLBACK: No specific route found, fetching any available route...");
-      result = await Route.find()
-        .limit(1)
-        .populate({
-          path: "economicNumber",
-          select: "vehicleType",
-          populate: { path: "vehicleType", select: "model" }
-        })
-        .select("routeNumber economicNumber");
     }
 
     console.log("Routes count to return:", result.length);

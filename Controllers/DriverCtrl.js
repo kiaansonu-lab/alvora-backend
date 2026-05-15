@@ -139,46 +139,65 @@ const loginAdmin = asyncHandler(async (req, res) => {
 
 const editUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  console.log("Updating driver ID:", id);
+  console.log("=== UPDATE DRIVER START ===");
+  console.log("ID:", id);
+  console.log("RECV BODY:", JSON.stringify(req.body));
 
   try {
     if (!isValidObjectId(id)) {
-      return res.status(400).json({ message: "Invalid Driver ID format", success: false });
+      return res.status(400).json({ message: "Invalid ID format", success: false });
     }
 
     const updatedData = { ...req.body };
-    if (req.uploadedImageUrl) updatedData.profileimage = req.uploadedImageUrl;
+    if (req.uploadedImageUrl) {
+      updatedData.profileimage = req.uploadedImageUrl;
+    }
 
-    // Remove problematic fields for now to see if update works
-    delete updatedData.password; // Don't update password for now
-    
-    // Minimal cleanup
+    // Explicitly handle dateOfBirth
+    if (req.body.dateOfBirth) {
+      updatedData.dateOfBirth = req.body.dateOfBirth;
+    }
+
+    // Clean up IDs
     ['branchCode', 'route', 'department', 'position', 'assignVehicles'].forEach(field => {
       if (updatedData[field] === "" || !isValidObjectId(updatedData[field])) {
         delete updatedData[field];
       }
     });
 
-    console.log("Cleaned updatedData:", JSON.stringify(updatedData));
+    console.log("Final Update Data:", JSON.stringify(updatedData));
 
-    const updatedUser = await Schema.findByIdAndUpdate(id, updatedData, { new: true });
+    // Try Driver collection first
+    let updatedRecord = await Schema.findByIdAndUpdate(
+      id, 
+      { $set: updatedData }, 
+      { new: true, runValidators: true }
+    );
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "Driver not found in database", success: false });
+    if (!updatedRecord) {
+      console.log("Trying User collection...");
+      updatedRecord = await User.findByIdAndUpdate(
+        id, 
+        { $set: updatedData }, 
+        { new: true, runValidators: true }
+      );
     }
 
+    if (!updatedRecord) {
+      return res.status(404).json({ message: "Not found", success: false });
+    }
+
+    console.log("Record Updated Successfully. Result DOB:", updatedRecord.dateOfBirth);
+    console.log("=== UPDATE DRIVER END ===");
+
     res.status(200).json({ 
-      data: updatedUser, 
-      message: "Driver updated successfully (Simplified Mode)", 
+      data: updatedRecord, 
+      message: "Driver updated successfully", 
       success: true 
     });
   } catch (error) {
-    console.error("FATAL Error in editUser:", error);
-    res.status(500).json({ 
-      message: "Backend Crash during update", 
-      error: error.message,
-      success: false 
-    });
+    console.error("FATAL Update Error:", error);
+    res.status(500).json({ message: error.message, success: false });
   }
 });
 
@@ -219,12 +238,18 @@ const getAllUserData = asyncHandler(async (req, res) => {
 
     const usersWithVehicles = await Promise.all(
       mergedUsers.map(async (user) => {
+        const userData = user.toObject();
         const vehicleData = await Vehicle.find({
           branchCode: user?.branchCode?._id,
           route: user?.route?._id,
         }).select("economicNumber vehicleType");
 
-        return { ...user.toObject(), vehicles: vehicleData };
+        // Ensure dateOfBirth is present in the object
+        return { 
+          ...userData, 
+          dateOfBirth: user.dateOfBirth || "",
+          vehicles: vehicleData 
+        };
       })
     );
 
