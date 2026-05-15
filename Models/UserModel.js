@@ -37,6 +37,7 @@ const userSchema = new Schema(
       ref: "Roles"
     },
     profileimage: {
+<<<<<<< HEAD
       type: String,
     },
     licenseNumber: {
@@ -47,6 +48,9 @@ const userSchema = new Schema(
     },
     licenseExpDate: {
       type: String,
+=======
+      type: String
+>>>>>>> eb758f4c6f602c0736cdce443cd6b6a4f87c1e5a
     },
     passwordResetToken: String,
     passwordResetExpires: Date,
